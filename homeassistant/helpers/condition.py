@@ -260,20 +260,30 @@ def sun(hass, before=None, after=None, before_offset=None, after_offset=None):
         # There is no sunset today
         return False
 
-    if before == SUN_EVENT_SUNRISE and not is_between(
-            utcnow.time(), [sunset.time(), (sunrise + before_offset).time()]):
+    _LOGGER.warning("---------------------------------")
+    #_LOGGER.warning("UTC: %s, local: %s", utcnow, dt_util.as_local(utcnow))
+    _LOGGER.warning("UTC: %s, sunrise: %s, sunset: %s", utcnow, sunrise, sunset)
+    _LOGGER.warning("local: %s, sunrise local: %s, sunset local: %s", 
+                    dt_util.as_local(utcnow), dt_util.as_local(sunrise), dt_util.as_local(sunset))
+    #_LOGGER.warning("config: %s", hass.config.time_zone)
+    #if before == SUN_EVENT_SUNRISE and not is_between(
+    #        utcnow.time(), [sunset.time(), (sunrise + before_offset).time()]):
+    if before == SUN_EVENT_SUNRISE and utcnow > sunrise + before_offset:
         return False
 
-    if before == SUN_EVENT_SUNSET and not is_between(
-            utcnow.time(), [sunrise.time(), (sunset + before_offset).time()]):
+    #if before == SUN_EVENT_SUNSET and not is_between(
+    #        utcnow.time(), [sunrise.time(), (sunset + before_offset).time()]):
+    if before == SUN_EVENT_SUNSET and utcnow > sunset + before_offset:
         return False
 
-    if after == SUN_EVENT_SUNRISE and not is_between(
-            utcnow.time(), [(sunrise + after_offset).time(), sunset.time()]):
+    #if after == SUN_EVENT_SUNRISE and not is_between(
+    #        utcnow.time(), [(sunrise + after_offset).time(), sunset.time()]):
+    if after == SUN_EVENT_SUNRISE and utcnow < sunrise + after_offset:
         return False
 
-    if after == SUN_EVENT_SUNSET and not is_between(
-            utcnow.time(), [(sunset + after_offset).time(), sunrise.time()]):
+    #if after == SUN_EVENT_SUNSET and not is_between(
+    #        utcnow.time(), [(sunset + after_offset).time(), sunrise.time()]):
+    if after == SUN_EVENT_SUNSET and utcnow < sunset + after_offset:
         return False
 
     return True
