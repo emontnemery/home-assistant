@@ -318,7 +318,7 @@ async def test_if_action_before_sunset_with_offset(hass, calls):
 
     # sunrise: 13:32:43 UTC, sunset: 01:55:24 UTC
     # now = sunset + 1s + 1h -> 'before sunset' with offset +1h not true
-    now = datetime(2015, 9, 16, 2, 55, 25, tzinfo=dt_util.UTC)
+    now = datetime(2015, 9, 17, 2, 55, 25, tzinfo=dt_util.UTC)
     with patch('homeassistant.util.dt.utcnow',
                return_value=now):
         hass.bus.async_fire('test_event')
@@ -326,7 +326,7 @@ async def test_if_action_before_sunset_with_offset(hass, calls):
         assert 0 == len(calls)
 
     # now = sunset + 1h -> 'before sunset' with offset +1h true
-    now = datetime(2015, 9, 16, 2, 55, 24, tzinfo=dt_util.UTC)
+    now = datetime(2015, 9, 17, 2, 55, 24, tzinfo=dt_util.UTC)
     with patch('homeassistant.util.dt.utcnow',
                return_value=now):
         hass.bus.async_fire('test_event')
