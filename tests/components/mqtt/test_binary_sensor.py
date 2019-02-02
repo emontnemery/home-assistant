@@ -13,9 +13,10 @@ from homeassistant.setup import async_setup_component, setup_component
 import homeassistant.util.dt as dt_util
 
 from tests.common import (
-    MockConfigEntry, async_fire_mqtt_message, async_mock_mqtt_component,
-    fire_mqtt_message, fire_time_changed, get_test_home_assistant,
-    mock_component, mock_mqtt_component, mock_registry)
+    MockConfigEntry, assert_setup_component, async_fire_mqtt_message,
+    async_mock_mqtt_component, fire_mqtt_message, fire_time_changed,
+    get_test_home_assistant, mock_component, mock_mqtt_component,
+    mock_registry)
 
 
 class TestSensorMQTT(unittest.TestCase):
@@ -110,6 +111,39 @@ class TestSensorMQTT(unittest.TestCase):
 
         state = self.hass.states.get('binary_sensor.test')
         assert state is None
+
+    def test_invalid_icon(self):
+        """Test icon option with invalid value."""
+        with assert_setup_component(0):
+            assert setup_component(self.hass, binary_sensor.DOMAIN, {
+                'binary_sensor.DOMAIN': {
+                    'platform': 'mqtt',
+                    'name': 'Test 1',
+                    'state_topic': 'test-topic',
+                    'icon': 'foobarnotreal'
+                }
+            })
+
+    def test_valid_icon(self):
+        """Test icon option with valid values."""
+        assert setup_component(self.hass, binary_sensor.DOMAIN, {
+            binary_sensor.DOMAIN: [{
+                'platform': 'mqtt',
+                'name': 'Test 1',
+                'state_topic': 'test-topic',
+                'icon': 'mdi:lamp'
+            }, {
+                'platform': 'mqtt',
+                'name': 'Test 2',
+                'state_topic': 'test-topic',
+            }]
+        })
+        self.hass.block_till_done()
+
+        state = self.hass.states.get('binary_sensor.test_1')
+        assert state.attributes['icon'] == 'mdi:lamp'
+        state = self.hass.states.get('binary_sensor.test_2')
+        assert 'icon' not in state.attributes
 
     def test_availability_without_topic(self):
         """Test availability without defined availability topic."""

@@ -365,6 +365,39 @@ class TestSensorMQTT(unittest.TestCase):
         state = self.hass.states.get('sensor.test_2')
         assert 'device_class' not in state.attributes
 
+    def test_invalid_icon(self):
+        """Test icon option with invalid value."""
+        with assert_setup_component(0):
+            assert setup_component(self.hass, 'sensor', {
+                'sensor': {
+                    'platform': 'mqtt',
+                    'name': 'Test 1',
+                    'state_topic': 'test-topic',
+                    'icon': 'foobarnotreal'
+                }
+            })
+
+    def test_valid_icon(self):
+        """Test icon option with valid values."""
+        assert setup_component(self.hass, 'sensor', {
+            'sensor': [{
+                'platform': 'mqtt',
+                'name': 'Test 1',
+                'state_topic': 'test-topic',
+                'icon': 'mdi:lamp'
+            }, {
+                'platform': 'mqtt',
+                'name': 'Test 2',
+                'state_topic': 'test-topic',
+            }]
+        })
+        self.hass.block_till_done()
+
+        state = self.hass.states.get('sensor.test_1')
+        assert state.attributes['icon'] == 'mdi:lamp'
+        state = self.hass.states.get('sensor.test_2')
+        assert 'icon' not in state.attributes
+
 
 async def test_setting_attribute_via_mqtt_json_message(hass, mqtt_mock):
     """Test the setting of attribute via MQTT with JSON payload."""

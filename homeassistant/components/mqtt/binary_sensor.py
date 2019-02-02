@@ -18,7 +18,7 @@ from homeassistant.components.mqtt import (
 from homeassistant.components.mqtt.discovery import (
     MQTT_DISCOVERY_NEW, clear_discovery_hash)
 from homeassistant.const import (
-    CONF_DEVICE, CONF_DEVICE_CLASS, CONF_FORCE_UPDATE, CONF_NAME,
+    CONF_DEVICE, CONF_DEVICE_CLASS, CONF_FORCE_UPDATE, CONF_ICON, CONF_NAME,
     CONF_PAYLOAD_OFF, CONF_PAYLOAD_ON, CONF_VALUE_TEMPLATE)
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
@@ -40,6 +40,7 @@ PLATFORM_SCHEMA = mqtt.MQTT_RO_PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     vol.Optional(CONF_PAYLOAD_OFF, default=DEFAULT_PAYLOAD_OFF): cv.string,
     vol.Optional(CONF_PAYLOAD_ON, default=DEFAULT_PAYLOAD_ON): cv.string,
+    vol.Optional(CONF_ICON): cv.icon,
     vol.Optional(CONF_DEVICE_CLASS): DEVICE_CLASSES_SCHEMA,
     vol.Optional(CONF_FORCE_UPDATE, default=DEFAULT_FORCE_UPDATE): cv.boolean,
     vol.Optional(CONF_OFF_DELAY):
@@ -188,6 +189,11 @@ class MqttBinarySensor(MqttAttributes, MqttAvailability, MqttDiscoveryUpdate,
     def is_on(self):
         """Return true if the binary sensor is on."""
         return self._state
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        return self._config.get(CONF_ICON)
 
     @property
     def device_class(self):
