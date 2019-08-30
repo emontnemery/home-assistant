@@ -1,4 +1,5 @@
 """Offer reusable conditions."""
+import asyncio
 from datetime import datetime, timedelta
 import functools as ft
 import logging
@@ -17,6 +18,7 @@ from homeassistant.const import (
     CONF_ENTITY_ID,
     CONF_VALUE_TEMPLATE,
     CONF_CONDITION,
+    CONF_DOMAIN,
     WEEKDAYS,
     CONF_STATE,
     CONF_ZONE,
@@ -33,6 +35,7 @@ from homeassistant.const import (
 from homeassistant.exceptions import TemplateError, HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.sun import get_astral_event_date
+from homeassistant.loader import async_get_integration
 import homeassistant.util.dt as dt_util
 from homeassistant.util.async_ import run_callback_threadsafe
 
@@ -73,8 +76,9 @@ def _threaded_factory(
     return factory
 
 
-def async_from_config(
-    config: ConfigType, config_validation: bool = True
+# TODO: This is now a coroutine; update everywhere..
+async def async_from_config(
+    hass: HomeAssistant, config: ConfigType, config_validation: bool = True
 ) -> Callable[..., bool]:
     """Turn a condition configuration into a method.
 
@@ -95,9 +99,17 @@ def async_from_config(
             )
         )
 
+    # Check for partials to properly determine if coroutine function
+    check_factory = factory
+    while isinstance(check_factory, ft.partial):
+        check_factory = check_factory.func
+
+    if asyncio.iscoroutinefunction(check_factory):
+        return await cast(Callable[..., bool], factory(hass, config, config_validation))
     return cast(Callable[..., bool], factory(config, config_validation))
 
 
+# TODO: This doesn't seem to be used anywhere?
 from_config = _threaded_factory(async_from_config)
 
 
@@ -164,6 +176,17 @@ def async_or_from_config(
 
 
 or_from_config = _threaded_factory(async_or_from_config)
+
+
+async def async_device_from_config(
+    hass: HomeAssistant, config: ConfigType, config_validation: bool = True
+) -> Callable[..., bool]:
+    """Wrap action method with state based condition."""
+    if config_validation:
+        config = cv.DEVICE_CONDITION_SCHEMA(config)
+    integration = await async_get_integration(hass, config[CONF_DOMAIN])
+    platform = integration.get_platform("device_automation")
+    return platform.async_condition_from_config(config, config_validation)
 
 
 def numeric_state(
