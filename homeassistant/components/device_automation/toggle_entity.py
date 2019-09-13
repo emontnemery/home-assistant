@@ -42,11 +42,13 @@ ENTITY_CONDITIONS = [
         # True when entity is turned off
         CONF_CONDITION: "device",
         CONF_TYPE: CONF_IS_OFF,
+        CONF_FOR: None,
     },
     {
         # True when entity is turned on
         CONF_CONDITION: "device",
         CONF_TYPE: CONF_IS_ON,
+        CONF_FOR: None,
     },
 ]
 
