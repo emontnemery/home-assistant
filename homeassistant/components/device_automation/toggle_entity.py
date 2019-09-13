@@ -55,11 +55,13 @@ ENTITY_TRIGGERS = [
         # Trigger when entity is turned off
         CONF_PLATFORM: "device",
         CONF_TYPE: CONF_TURN_OFF,
+        CONF_FOR: None,
     },
     {
         # Trigger when entity is turned on
         CONF_PLATFORM: "device",
         CONF_TYPE: CONF_TURN_ON,
+        CONF_FOR: None,
     },
 ]
 
