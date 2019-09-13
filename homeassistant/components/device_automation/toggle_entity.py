@@ -15,6 +15,7 @@ from homeassistant.const import (
     CONF_DEVICE_ID,
     CONF_DOMAIN,
     CONF_ENTITY_ID,
+    CONF_FOR,
     CONF_PLATFORM,
     CONF_TYPE,
 )
@@ -88,6 +89,7 @@ TRIGGER_SCHEMA = vol.Schema(
         vol.Required(CONF_DOMAIN): str,
         vol.Required(CONF_ENTITY_ID): cv.entity_id,
         vol.Required(CONF_TYPE): vol.In([CONF_TURN_OFF, CONF_TURN_ON]),
+        vol.Optional(CONF_FOR): vol.All(cv.time_period, cv.positive_timedelta),
     }
 )
 
