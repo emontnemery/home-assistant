@@ -18,7 +18,12 @@ from homeassistant.const import (
     STATE_CLOSING,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import condition, config_validation as cv, entity_registry
+from homeassistant.helpers import (
+    condition,
+    config_validation as cv,
+    entity_registry,
+    template,
+)
 from homeassistant.helpers.typing import ConfigType, TemplateVarsType
 from homeassistant.helpers.config_validation import DEVICE_CONDITION_BASE_SCHEMA
 from . import (
@@ -157,17 +162,36 @@ def async_condition_from_config(
     if config_validation:
         config = CONDITION_SCHEMA(config)
 
-    if config[CONF_TYPE] == "is_open":
-        state = STATE_OPEN
-    elif config[CONF_TYPE] == "is_closed":
-        state = STATE_CLOSED
-    elif config[CONF_TYPE] == "is_opening":
-        state = STATE_OPENING
-    elif config[CONF_TYPE] == "is_closing":
-        state = STATE_CLOSING
+    if config[CONF_TYPE] in STATE_CONDITION_TYPES:
+        if config[CONF_TYPE] == "is_open":
+            state = STATE_OPEN
+        elif config[CONF_TYPE] == "is_closed":
+            state = STATE_CLOSED
+        elif config[CONF_TYPE] == "is_opening":
+            state = STATE_OPENING
+        elif config[CONF_TYPE] == "is_closing":
+            state = STATE_CLOSING
 
-    def test_is_state(hass: HomeAssistant, variables: TemplateVarsType) -> bool:
-        """Test if an entity is a certain state."""
-        return condition.state(hass, config[ATTR_ENTITY_ID], state)
+        def test_is_state(hass: HomeAssistant, variables: TemplateVarsType) -> bool:
+            """Test if an entity is a certain state."""
+            return condition.state(hass, config[ATTR_ENTITY_ID], state)
 
-    return test_is_state
+        return test_is_state
+
+    if config[CONF_TYPE] == "is_position":
+        position = "current_cover_position"
+    if config[CONF_TYPE] == "is_tilt_position":
+        position = "current_cover_tilt_position"
+    min_pos = config.get(CONF_ABOVE, -1)
+    max_pos = config.get(CONF_BELOW, 101)
+    value_template = template.Template(  # type: ignore
+        f"{{ (state_attr('{config[ATTR_ENTITY_ID]}', '{position}')|int) > {min_pos} and (state_attr('{config[ATTR_ENTITY_ID]}', '{position}')|int) < {max_pos} }}"
+    )
+
+    def template_if(hass: HomeAssistant, variables: TemplateVarsType = None) -> bool:
+        """Validate template based if-condition."""
+        value_template.hass = hass
+
+        return condition.async_template(hass, value_template, variables)
+
+    return template_if
