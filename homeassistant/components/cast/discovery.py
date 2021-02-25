@@ -8,6 +8,7 @@ from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import dispatcher_send
 
+from . import DOMAIN as CAST_DOMAIN
 from .const import (
     DEFAULT_PORT,
     INTERNAL_DISCOVERY_RUNNING_KEY,
@@ -90,7 +91,9 @@ def setup_internal_discovery(hass: HomeAssistant) -> None:
 
     _LOGGER.debug("Starting internal pychromecast discovery")
     browser = pychromecast.discovery.CastBrowser(
-        CastListener(), ChromeCastZeroconf.get_zeroconf()
+        CastListener(),
+        ChromeCastZeroconf.get_zeroconf(),
+        hass.data[CAST_DOMAIN].get("known_hosts"),
     )
     browser.start_discovery()
 

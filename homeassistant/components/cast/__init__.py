@@ -1,8 +1,24 @@
 """Component to embed Google Cast."""
+import voluptuous as vol
+
 from homeassistant import config_entries
+import homeassistant.helpers.config_validation as cv
 
 from . import home_assistant_cast
 from .const import DOMAIN
+
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.All(
+            vol.Schema(
+                {
+                    vol.Optional("known_hosts"): vol.All(cv.ensure_list, [cv.string]),
+                }
+            ),
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 
 async def async_setup(hass, config):
