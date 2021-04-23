@@ -421,8 +421,8 @@ async def test_rgbw_light(
             blocking=True,
         )
         await hass.async_block_till_done()
+        # white_value is not supported and will be ignored
         light_mock.assert_called_once_with(
-            color_primary=(255, 0, 0, 100),
             on=True,
             segment_id=0,
         )

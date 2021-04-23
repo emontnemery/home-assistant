@@ -286,7 +286,6 @@ class WLEDSegmentLight(LightEntity, WLEDDeviceEntity):
     def _white_value(self) -> int | None:
         """Return the white value of this light between 0..255."""
         color = self.coordinator.data.state.segments[self._segment].color_primary
-        return color[-1]
         return color[-1] if self._rgbw else None
 
     @property
@@ -349,7 +348,7 @@ class WLEDSegmentLight(LightEntity, WLEDDeviceEntity):
             if self._rgbw:
                 # TODO: Do we have to support color_temp for rgbw?
                 # Add last known white value
-                data[ATTR_COLOR_PRIMARY] += (self.white_value,)
+                data[ATTR_COLOR_PRIMARY] += (self._white_value,)
 
         if ATTR_RGB_COLOR in kwargs:
             data[ATTR_COLOR_PRIMARY] = kwargs[ATTR_RGB_COLOR]
