@@ -10,15 +10,15 @@ from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP,
     ATTR_EFFECT,
-    ATTR_HS_COLOR,
+    ATTR_RGB_COLOR,
+    ATTR_RGBW_COLOR,
     ATTR_TRANSITION,
-    ATTR_WHITE_VALUE,
-    SUPPORT_BRIGHTNESS,
-    SUPPORT_COLOR,
-    SUPPORT_COLOR_TEMP,
+    COLOR_MODE_BRIGHTNESS,
+    COLOR_MODE_COLOR_TEMP,
+    COLOR_MODE_RGB,
+    COLOR_MODE_RGBW,
     SUPPORT_EFFECT,
     SUPPORT_TRANSITION,
-    SUPPORT_WHITE_VALUE,
     LightEntity,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -111,9 +111,19 @@ class WLEDMasterLight(LightEntity, WLEDDeviceEntity):
         return f"{self.coordinator.data.info.mac_address}"
 
     @property
+    def supported_color_modes(self) -> set | None:
+        """Flag supported features."""
+        return {COLOR_MODE_BRIGHTNESS}
+
+    @property
     def supported_features(self) -> int:
         """Flag supported features."""
-        return SUPPORT_BRIGHTNESS | SUPPORT_TRANSITION
+        return SUPPORT_TRANSITION
+
+    @property
+    def color_mode(self) -> str | None:
+        """Return the color mode of the light."""
+        return COLOR_MODE_BRIGHTNESS
 
     @property
     def brightness(self) -> int | None:
@@ -231,10 +241,20 @@ class WLEDSegmentLight(LightEntity, WLEDDeviceEntity):
         }
 
     @property
-    def hs_color(self) -> tuple[float, float] | None:
-        """Return the hue and saturation color value [float, float]."""
+    def rgb_color(self) -> tuple[int, int, int] | None:
+        """Return the color value."""
+        if self._rgbw:
+            return None
         color = self.coordinator.data.state.segments[self._segment].color_primary
-        return color_util.color_RGB_to_hs(*color[:3])
+        return color[:3]
+
+    @property
+    def rgbw_color(self) -> tuple[int, int, int, int] | None:
+        """Return the color value."""
+        if not self._rgbw:
+            return None
+        color = self.coordinator.data.state.segments[self._segment].color_primary
+        return color[:4]
 
     @property
     def effect(self) -> str | None:
@@ -256,26 +276,30 @@ class WLEDSegmentLight(LightEntity, WLEDDeviceEntity):
         return state.segments[self._segment].brightness
 
     @property
-    def white_value(self) -> int | None:
+    def color_mode(self) -> str | None:
+        """Return the color mode of the light."""
+        if self._rgbw:
+            return COLOR_MODE_RGBW
+        return COLOR_MODE_RGB
+
+    @property
+    def _white_value(self) -> int | None:
         """Return the white value of this light between 0..255."""
         color = self.coordinator.data.state.segments[self._segment].color_primary
+        return color[-1]
         return color[-1] if self._rgbw else None
+
+    @property
+    def supported_color_modes(self) -> set | None:
+        """Flag supported features."""
+        if self._rgbw:
+            return {COLOR_MODE_RGBW}
+        return {COLOR_MODE_RGB, COLOR_MODE_COLOR_TEMP}
 
     @property
     def supported_features(self) -> int:
         """Flag supported features."""
-        flags = (
-            SUPPORT_BRIGHTNESS
-            | SUPPORT_COLOR
-            | SUPPORT_COLOR_TEMP
-            | SUPPORT_EFFECT
-            | SUPPORT_TRANSITION
-        )
-
-        if self._rgbw:
-            flags |= SUPPORT_WHITE_VALUE
-
-        return flags
+        return SUPPORT_EFFECT | SUPPORT_TRANSITION
 
     @property
     def effect_list(self) -> list[str]:
@@ -322,10 +346,21 @@ class WLEDSegmentLight(LightEntity, WLEDDeviceEntity):
             data[ATTR_COLOR_PRIMARY] = tuple(
                 map(int, color_util.color_temperature_to_rgb(mireds))
             )
+            if self._rgbw:
+                # TODO: Do we have to support color_temp for rgbw?
+                # Add last known white value
+                data[ATTR_COLOR_PRIMARY] += (self.white_value,)
 
-        if ATTR_HS_COLOR in kwargs:
-            hue, sat = kwargs[ATTR_HS_COLOR]
-            data[ATTR_COLOR_PRIMARY] = color_util.color_hsv_to_RGB(hue, sat, 100)
+        if ATTR_RGB_COLOR in kwargs:
+            data[ATTR_COLOR_PRIMARY] = kwargs[ATTR_RGB_COLOR]
+
+        if ATTR_RGBW_COLOR in kwargs:
+            data[ATTR_COLOR_PRIMARY] = kwargs[ATTR_RGBW_COLOR]
+            # TODO: Do we want this?
+            # On a RGBW strip, when the color is pure white, disable the RGB LEDs in
+            # WLED by setting RGB to 0,0,0
+            if data[ATTR_COLOR_PRIMARY] == (255, 255, 255):
+                data[ATTR_COLOR_PRIMARY] = (0, 0, 0)
 
         if ATTR_TRANSITION in kwargs:
             # WLED uses 100ms per unit, so 10 = 1 second.
@@ -336,27 +371,6 @@ class WLEDSegmentLight(LightEntity, WLEDDeviceEntity):
 
         if ATTR_EFFECT in kwargs:
             data[ATTR_EFFECT] = kwargs[ATTR_EFFECT]
-
-        # Support for RGBW strips, adds white value
-        if self._rgbw and any(
-            x in (ATTR_COLOR_TEMP, ATTR_HS_COLOR, ATTR_WHITE_VALUE) for x in kwargs
-        ):
-            # WLED cannot just accept a white value, it needs the color.
-            # We use the last know color in case just the white value changes.
-            if all(x not in (ATTR_COLOR_TEMP, ATTR_HS_COLOR) for x in kwargs):
-                hue, sat = self.hs_color
-                data[ATTR_COLOR_PRIMARY] = color_util.color_hsv_to_RGB(hue, sat, 100)
-
-            # On a RGBW strip, when the color is pure white, disable the RGB LEDs in
-            # WLED by setting RGB to 0,0,0
-            if data[ATTR_COLOR_PRIMARY] == (255, 255, 255):
-                data[ATTR_COLOR_PRIMARY] = (0, 0, 0)
-
-            # Add requested or last known white value
-            if ATTR_WHITE_VALUE in kwargs:
-                data[ATTR_COLOR_PRIMARY] += (kwargs[ATTR_WHITE_VALUE],)
-            else:
-                data[ATTR_COLOR_PRIMARY] += (self.white_value,)
 
         # When only 1 segment is present, switch along the master, and use
         # the master for power/brightness control.
