@@ -11,6 +11,8 @@ from homeassistant.setup import async_setup_component
 import homeassistant.util.dt as dt_util
 from homeassistant.util.unit_system import IMPERIAL_SYSTEM, METRIC_SYSTEM
 
+from .common import trigger_db_commit
+
 from tests.common import init_recorder_component
 
 BATTERY_SENSOR_ATTRIBUTES = {
@@ -240,3 +242,55 @@ async def test_validate_statistics_unsupported_device_class(
     # Remove the state - empty response
     hass.states.async_remove("sensor.test")
     await assert_validation_result(client, {})
+
+
+@pytest.mark.parametrize("new_unit", ["dogs", None])
+async def test_update_statistics_metadata(hass, hass_ws_client, new_unit):
+    """Test removing statistics."""
+    now = dt_util.utcnow()
+
+    units = METRIC_SYSTEM
+    attributes = POWER_SENSOR_ATTRIBUTES
+    state = 10
+
+    hass.config.units = units
+    await hass.async_add_executor_job(init_recorder_component, hass)
+    await async_setup_component(hass, "history", {})
+    await async_setup_component(hass, "sensor", {})
+    await hass.async_add_executor_job(hass.data[DATA_INSTANCE].block_till_done)
+    hass.states.async_set("sensor.test", state, attributes=attributes)
+    await hass.async_block_till_done()
+
+    await hass.async_add_executor_job(trigger_db_commit, hass)
+    await hass.async_block_till_done()
+
+    hass.data[DATA_INSTANCE].do_adhoc_statistics(period="hourly", start=now)
+    await hass.async_add_executor_job(hass.data[DATA_INSTANCE].block_till_done)
+
+    client = await hass_ws_client()
+
+    await client.send_json({"id": 1, "type": "history/list_statistic_ids"})
+    response = await client.receive_json()
+    assert response["success"]
+    assert response["result"] == [
+        {"statistic_id": "sensor.test", "unit_of_measurement": "W"}
+    ]
+
+    await client.send_json(
+        {
+            "id": 2,
+            "type": "recorder/update_statistics_metadata",
+            "statistic_id": "sensor.test",
+            "unit_of_measurement": new_unit,
+        }
+    )
+    response = await client.receive_json()
+    assert response["success"]
+    await hass.async_add_executor_job(hass.data[DATA_INSTANCE].block_till_done)
+
+    await client.send_json({"id": 3, "type": "history/list_statistic_ids"})
+    response = await client.receive_json()
+    assert response["success"]
+    assert response["result"] == [
+        {"statistic_id": "sensor.test", "unit_of_measurement": new_unit}
+    ]
