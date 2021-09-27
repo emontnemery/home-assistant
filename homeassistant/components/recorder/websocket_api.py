@@ -42,8 +42,8 @@ async def ws_validate_statistics(
         vol.Required("unit_of_measurement"): vol.Any(str, None),
     }
 )
-@websocket_api.async_response
-async def ws_update_statistics_metadata(
+@callback
+def ws_update_statistics_metadata(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict
 ) -> None:
     """Update statistics metadata for a statistic_id."""
