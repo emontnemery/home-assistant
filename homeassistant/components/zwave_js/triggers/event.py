@@ -171,21 +171,6 @@ class EventTrigger(Trigger):
         trigger_info: TriggerInfo,
     ) -> CALLBACK_TYPE:
         """Attach a trigger."""
-        return await cls.async_attach_trigger_with_platform(
-            hass, config, action, trigger_info
-        )
-
-    @classmethod
-    async def async_attach_trigger_with_platform(
-        cls,
-        hass: HomeAssistant,
-        config: ConfigType,
-        action: TriggerActionType,
-        trigger_info: TriggerInfo,
-        *,
-        platform_type: str = PLATFORM_TYPE,
-    ) -> CALLBACK_TYPE:
-        """Attach a trigger."""
         dev_reg = dr.async_get(hass)
         if config[ATTR_EVENT_SOURCE] == "node" and not async_get_nodes_from_targets(
             hass, config, dev_reg=dev_reg
@@ -195,7 +180,6 @@ class EventTrigger(Trigger):
             )
 
         trigger = cls(hass, config, action, trigger_info)
-        trigger._platform_type = platform_type
         trigger._create_zwave_listeners()
         return trigger._async_remove
 
