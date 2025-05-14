@@ -132,14 +132,15 @@ async def async_validate_trigger_config(
 
 
 async def async_attach_trigger(
-    hass: HomeAssistant,
-    config: ConfigType,
+    trigger: EventTrigger,
     action: TriggerActionType,
     trigger_info: TriggerInfo,
     *,
     platform_type: str = PLATFORM_TYPE,
 ) -> CALLBACK_TYPE:
     """Listen for state changes based on configuration."""
+    config = trigger.config
+    hass = trigger.hass
     dev_reg = dr.async_get(hass)
     if config[ATTR_EVENT_SOURCE] == "node" and not async_get_nodes_from_targets(
         hass, config, dev_reg=dev_reg
@@ -256,6 +257,11 @@ async def async_attach_trigger(
 class EventTrigger(Trigger):
     """Z-Wave JS event trigger."""
 
+    def __init__(self, hass: HomeAssistant, config: ConfigType) -> None:
+        """Initialize trigger."""
+        self.config = config
+        self.hass = hass
+
     @classmethod
     async def async_validate_trigger_config(
         cls, hass: HomeAssistant, config: ConfigType
@@ -272,4 +278,5 @@ class EventTrigger(Trigger):
         trigger_info: TriggerInfo,
     ) -> CALLBACK_TYPE:
         """Attach a trigger."""
-        return await async_attach_trigger(hass, config, action, trigger_info)
+        trigger = cls(hass, config)
+        return await async_attach_trigger(trigger, action, trigger_info)
