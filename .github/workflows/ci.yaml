@@ -700,7 +700,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v5.0.0
       - name: Dependency review
-        uses: actions/dependency-review-action@v4.7.3
+        uses: actions/dependency-review-action@v4.8.0
         with:
           license-check: false # We use our own license audit checks
 
